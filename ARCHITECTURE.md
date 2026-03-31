@@ -1,0 +1,268 @@
+# Shopizer Infrastructure Architecture
+
+## 📐 System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Developer Machine                         │
+│                                                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                    Workspace Directory                      │ │
+│  │                                                              │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │ │
+│  │  │   shopizer   │  │shopizer-admin│  │shopizer-shop │     │ │
+│  │  │   (Java)     │  │  (Angular)   │  │   (React)    │     │ │
+│  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │ │
+│  │         │                  │                  │              │ │
+│  │         └──────────────────┼──────────────────┘              │ │
+│  │                            │                                 │ │
+│  │                    ┌───────▼────────┐                       │ │
+│  │                    │  infra/ repo   │                       │ │
+│  │                    │                │                       │ │
+│  │                    │  • Dockerfiles │                       │ │
+│  │                    │  • K8s YAML    │                       │ │
+│  │                    │  • Terraform   │                       │ │
+│  │                    │  • Scripts     │                       │ │
+│  │                    └───────┬────────┘                       │ │
+│  └────────────────────────────┼──────────────────────────────┘ │
+│                                │                                 │
+│                                │ docker build                    │
+│                                ▼                                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                      Docker Engine                          │ │
+│  │                                                              │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │ │
+│  │  │   backend    │  │    admin     │  │     shop     │     │ │
+│  │  │  image:tag   │  │  image:tag   │  │  image:tag   │     │ │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘     │ │
+│  └────────────────────────────┬──────────────────────────────┘ │
+│                                │                                 │
+│                                │ docker save + nerdctl load      │
+│                                ▼                                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                      Colima VM                              │ │
+│  │                                                              │ │
+│  │  ┌──────────────────────────────────────────────────────┐  │ │
+│  │  │              Kubernetes Cluster                       │  │ │
+│  │  │                                                        │  │ │
+│  │  │  ┌──────────────────────────────────────────────┐    │  │ │
+│  │  │  │         Namespace: shopizer-local            │    │  │ │
+│  │  │  │                                                │    │  │ │
+│  │  │  │  ┌────────────────────────────────────────┐  │    │  │ │
+│  │  │  │  │      NGINX Ingress Controller          │  │    │  │ │
+│  │  │  │  │                                          │  │    │  │ │
+│  │  │  │  │  backend.local → Backend Service        │  │    │  │ │
+│  │  │  │  │  admin.local   → Admin Service          │  │    │  │ │
+│  │  │  │  │  shop.local    → Shop Service           │  │    │  │ │
+│  │  │  │  └────────────────────────────────────────┘  │    │  │ │
+│  │  │  │                                                │    │  │ │
+│  │  │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐   │    │  │ │
+│  │  │  │  │ Backend  │  │  Admin   │  │   Shop   │   │    │  │ │
+│  │  │  │  │   Pod    │  │   Pod    │  │   Pod    │   │    │  │ │
+│  │  │  │  │          │  │          │  │          │   │    │  │ │
+│  │  │  │  │ :8080    │  │  :80     │  │  :80     │   │    │  │ │
+│  │  │  │  └──────────┘  └──────────┘  └──────────┘   │    │  │ │
+│  │  │  │                                                │    │  │ │
+│  │  │  └────────────────────────────────────────────────┘    │  │ │
+│  │  └──────────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                │ http://backend.local
+                                │ http://admin.local
+                                │ http://shop.local
+                                ▼
+                        ┌───────────────┐
+                        │   Browser     │
+                        └───────────────┘
+```
+
+---
+
+## 🔄 Build & Deploy Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      CI/CD Pipeline                              │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                ┌───────────────┼───────────────┐
+                │               │               │
+                ▼               ▼               ▼
+        ┌──────────┐    ┌──────────┐    ┌──────────┐
+        │  Build   │    │  Build   │    │  Build   │
+        │ Backend  │    │  Admin   │    │   Shop   │
+        │  (mvn)   │    │  (npm)   │    │  (npm)   │
+        └────┬─────┘    └────┬─────┘    └────┬─────┘
+             │               │               │
+             │  JAR          │  dist/        │  build/
+             │               │               │
+             └───────────────┼───────────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Docker Build    │
+                    │ (multi-stage)   │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Docker Images   │
+                    │ • backend:tag   │
+                    │ • admin:tag     │
+                    │ • shop:tag      │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Save as TAR     │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Load to Colima  │
+                    │ (nerdctl load)  │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ kubectl apply   │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │ Pods Running    │
+                    └─────────────────┘
+```
+
+---
+
+## 🗂️ Data Flow
+
+```
+User Request
+     │
+     ▼
+┌─────────────────┐
+│   /etc/hosts    │  127.0.0.1 → backend.local, admin.local, shop.local
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ NGINX Ingress   │  Host-based routing
+└────────┬────────┘
+         │
+    ┌────┼────┐
+    │    │    │
+    ▼    ▼    ▼
+┌─────┐┌─────┐┌─────┐
+│ BE  ││Admin││Shop │  ClusterIP Services
+│ Svc ││ Svc ││ Svc │
+└──┬──┘└──┬──┘└──┬──┘
+   │      │      │
+   ▼      ▼      ▼
+┌─────┐┌─────┐┌─────┐
+│ BE  ││Admin││Shop │  Pods
+│ Pod ││ Pod ││ Pod │
+└─────┘└─────┘└─────┘
+```
+
+---
+
+## 🏗️ Infrastructure Layers
+
+```
+┌─────────────────────────────────────────┐
+│         Application Layer                │
+│  (shopizer, shopizer-admin, shop)        │
+└─────────────────┬───────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────┐
+│         Container Layer                  │
+│  (Docker images with multi-stage builds) │
+└─────────────────┬───────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────┐
+│      Orchestration Layer                 │
+│  (Kubernetes: Deployments, Services)     │
+└─────────────────┬───────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────┐
+│         Runtime Layer                    │
+│  (Colima VM with containerd + K8s)       │
+└─────────────────┬───────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────┐
+│      Infrastructure as Code              │
+│  (Terraform manages K8s resources)       │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## 🔐 Network Architecture
+
+```
+External (localhost:80)
+         │
+         ▼
+┌─────────────────┐
+│ Ingress (nginx) │  Port 80
+└────────┬────────┘
+         │
+    ┌────┼────┐
+    │    │    │
+    ▼    ▼    ▼
+┌─────┐┌─────┐┌─────┐
+│ BE  ││Admin││Shop │  ClusterIP
+│ :80 ││ :80 ││ :80 │
+└──┬──┘└──┬──┘└──┬──┘
+   │      │      │
+   ▼      ▼      ▼
+┌──────┐┌──────┐┌──────┐
+│:8080 ││ :80  ││ :80  │  Container Ports
+└──────┘└──────┘└──────┘
+```
+
+---
+
+## 📋 Deployment Checklist
+
+- [ ] Colima installed and running
+- [ ] kubectl configured for colima context
+- [ ] Docker images built from local repos
+- [ ] Images loaded into Colima
+- [ ] Terraform applied
+- [ ] Kubernetes manifests applied
+- [ ] Pods in Running state
+- [ ] Ingress configured
+- [ ] /etc/hosts updated
+- [ ] Services accessible via browser
+
+---
+
+## 🎯 Success Criteria
+
+```bash
+# All pods running
+kubectl get pods -n shopizer-local
+# NAME                               READY   STATUS    RESTARTS   AGE
+# shopizer-backend-xxx               1/1     Running   0          5m
+# shopizer-admin-xxx                 1/1     Running   0          5m
+# shopizer-shop-xxx                  1/1     Running   0          5m
+
+# Ingress configured
+kubectl get ingress -n shopizer-local
+# NAME               CLASS   HOSTS                                  ADDRESS
+# shopizer-ingress   nginx   backend.local,admin.local,shop.local   localhost
+
+# Services accessible
+curl -I http://backend.local
+curl -I http://admin.local
+curl -I http://shop.local
+```

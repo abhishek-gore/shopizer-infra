@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopizer-shop
+  namespace: shopizer-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shopizer-shop
+  template:
+    metadata:
+      labels:
+        app: shopizer-shop
+    spec:
+      containers:
+      - name: shop
+        image: shopizer-shop:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

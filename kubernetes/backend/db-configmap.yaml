@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-db-config
+  namespace: shopizer-local
+data:
+  database.properties: |
+    db.jdbcUrl=jdbc:mysql://mysql:3306/SALESMANAGER?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8
+    db.user=root
+    db.password=password
+    db.driverClass=com.mysql.cj.jdbc.Driver
+    hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+    db.preferredTestQuery=SELECT 1
+    db.show.sql=false
+    db.schema=SALESMANAGER
+    hibernate.hbm2ddl.auto=update
+    db.initialPoolSize=4
+    db.minPoolSize=4
+    db.maxPoolSize=4

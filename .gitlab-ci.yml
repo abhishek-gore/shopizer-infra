@@ -1,0 +1,56 @@
+stages:
+  - build
+  - package
+  - deploy
+
+variables:
+  IMAGE_TAG: $CI_COMMIT_SHA
+
+build-backend:
+  stage: build
+  script:
+    - cd ../shopizer
+    - mvn clean package -DskipTests
+  artifacts:
+    paths:
+      - ../shopizer/sm-shop/target/*.jar
+
+build-admin:
+  stage: build
+  script:
+    - cd ../shopizer-admin
+    - npm ci
+    - npm run build -- --configuration production
+  artifacts:
+    paths:
+      - ../shopizer-admin/dist/
+
+build-shop:
+  stage: build
+  script:
+    - cd ../shopizer-shop-reactjs
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - ../shopizer-shop-reactjs/build/
+
+package-images:
+  stage: package
+  dependencies:
+    - build-backend
+    - build-admin
+    - build-shop
+  script:
+    - cd infra
+    - ./scripts/build-images.sh
+
+deploy-local:
+  stage: deploy
+  script:
+    - cd infra
+    - ./scripts/load-images.sh
+    - ./scripts/deploy.sh
+  environment:
+    name: local
+    url: http://shop.local

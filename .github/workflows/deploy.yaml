@@ -1,0 +1,64 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        path: infra
+    
+    - name: Checkout application repos
+      run: |
+        cd ..
+        git clone <backend-repo> shopizer || true
+        git clone <admin-repo> shopizer-admin || true
+        git clone <shop-repo> shopizer-shop-reactjs || true
+    
+    - name: Build Backend JAR
+      working-directory: ../shopizer
+      run: |
+        mvn clean package -DskipTests
+    
+    - name: Build Admin Frontend
+      working-directory: ../shopizer-admin
+      run: |
+        npm ci
+        npm run build -- --configuration production
+    
+    - name: Build Shop Frontend
+      working-directory: ../shopizer-shop-reactjs
+      run: |
+        npm ci
+        npm run build
+    
+    - name: Build Docker Images
+      working-directory: infra
+      run: |
+        export IMAGE_TAG=${{ github.sha }}
+        ./scripts/build-images.sh
+    
+    - name: Load Images to Colima
+      working-directory: infra
+      run: |
+        export IMAGE_TAG=${{ github.sha }}
+        ./scripts/load-images.sh
+    
+    - name: Deploy to Kubernetes
+      working-directory: infra
+      run: |
+        export IMAGE_TAG=${{ github.sha }}
+        ./scripts/deploy.sh
+    
+    - name: Verify Deployment
+      run: |
+        kubectl get pods -n shopizer-local
+        kubectl get ingress -n shopizer-local

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopizer-shop
+  namespace: shopizer-local
+spec:
+  selector:
+    app: shopizer-shop
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP

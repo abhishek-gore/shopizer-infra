@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopizer-backend
+  namespace: shopizer-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shopizer-backend
+  template:
+    metadata:
+      labels:
+        app: shopizer-backend
+    spec:
+      containers:
+      - name: backend
+        image: shopizer-backend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "local"
+        - name: POPULATE_TEST_DATA
+          value: "true"
+        volumeMounts:
+        - name: db-config
+          mountPath: /app/BOOT-INF/classes/profiles/local/database.properties
+          subPath: database.properties
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+      volumes:
+      - name: db-config
+        configMap:
+          name: backend-db-config

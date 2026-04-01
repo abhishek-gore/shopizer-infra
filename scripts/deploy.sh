@@ -10,6 +10,7 @@ echo "==> Deploying to Kubernetes..."
 
 # Apply manifests
 kubectl apply -f "$INFRA_ROOT/kubernetes/namespace.yaml"
+kubectl apply -f "$INFRA_ROOT/kubernetes/mysql/"
 kubectl apply -f "$INFRA_ROOT/kubernetes/backend/"
 kubectl apply -f "$INFRA_ROOT/kubernetes/admin/"
 kubectl apply -f "$INFRA_ROOT/kubernetes/shop/"
@@ -18,6 +19,7 @@ kubectl apply -f "$INFRA_ROOT/kubernetes/ingress.yaml"
 echo ""
 echo "==> Waiting for deployments..."
 kubectl wait --for=condition=available --timeout=300s \
+  deployment/mysql \
   deployment/shopizer-backend \
   deployment/shopizer-admin \
   deployment/shopizer-shop \

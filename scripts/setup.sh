@@ -42,6 +42,10 @@ echo ""
 cd "$INFRA_ROOT"
 "$SCRIPT_DIR/deploy.sh"
 
+# Initialize database with sample data
+echo ""
+"$SCRIPT_DIR/init-db.sh"
+
 echo ""
 echo "==> Setup complete!"
 echo ""

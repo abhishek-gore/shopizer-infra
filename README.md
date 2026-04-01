@@ -72,11 +72,12 @@ infra/
 
 ## Scripts
 
-- `setup.sh` - Complete setup (Colima + build + deploy)
+- `setup.sh` - Complete setup (Colima + build + deploy + init DB)
 - `build-images-prebuilt.sh` - Build from pre-built artifacts (default)
 - `build-images.sh` - Build from source repositories (requires source)
 - `extract-artifacts.sh` - Extract artifacts from built images
 - `deploy.sh` - Deploy to Kubernetes
+- `init-db.sh` - Initialize database with sample data and fix NULL fields
 - `cleanup.sh` - Clean up everything
 
 ## Git LFS

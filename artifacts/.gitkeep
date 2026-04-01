@@ -1,0 +1,5 @@
+# Artifacts
+
+Pre-built application artifacts are stored here but excluded from git due to size.
+
+Download from releases or build from source using `./scripts/build-images.sh && ./scripts/extract-artifacts.sh`

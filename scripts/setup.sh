@@ -26,13 +26,9 @@ kubectl wait --namespace ingress-nginx \
   --selector=app.kubernetes.io/component=controller \
   --timeout=300s
 
-# Build images
+# Build images from pre-built artifacts
 echo ""
-"$SCRIPT_DIR/build-images.sh"
-
-# Load images
-echo ""
-"$SCRIPT_DIR/load-images.sh"
+"$SCRIPT_DIR/build-images-prebuilt.sh"
 
 # Apply Terraform
 echo ""
